@@ -82,13 +82,27 @@ class TestSolution(unittest.TestCase):
             '''
             Test your objective function
             '''
-            pass
+            sol = Solution(self.inst1)
+            type(sol).cmax = property(lambda self: 100) 
+            type(sol).total_energy_consumption = property(lambda self: 50.0)
+            
+            # Si objective = (1.0 * cmax) + (1.0 * total_energy_consumption)
+            self.assertEqual(sol.objective, 150.0, 'La fonction objectif doit agréger correctement Cmax et énergie')
 
         def test_evaluate(self):
             '''
             Test your evaluate function
             '''
-            pass
+            sol = Solution(self.inst1)
+        
+            # Test quand réalisable
+            type(sol).is_feasible = property(lambda self: True)
+            type(sol).objective = property(lambda self: 100.0)
+            self.assertEqual(sol.evaluate, 100.0, 'L\'évaluation d\'une solution réalisable doit retourner son objectif')
+            
+            # Test quand NON réalisable (pénalité)
+            type(sol).is_feasible = property(lambda self: False)
+            self.assertTrue(sol.evaluate > 100.0, 'L\'évaluation d\'une solution non réalisable doit être pénalisée (score > objectif)')
 
 
 if __name__ == "__main__":
