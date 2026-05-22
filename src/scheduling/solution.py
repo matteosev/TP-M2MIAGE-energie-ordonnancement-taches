@@ -21,7 +21,7 @@ class Solution(object):
         '''
         Constructor
         '''
-        raise "Not implemented error"
+        self._instance = instance
 
 
     @property
@@ -29,14 +29,17 @@ class Solution(object):
         '''
         Returns the associated instance
         '''
-        raise "Not implemented error"
+        return self._instance
 
 
     def reset(self):
         '''
         Resets the solution: everything needs to be replanned
         '''
-        raise "Not implemented error"
+        for machine in self.inst.machines:
+            machine.reset()
+        for operation in self.all_operations:
+            operation.reset()
 
     @property
     def is_feasible(self) -> bool:
@@ -44,7 +47,36 @@ class Solution(object):
         Returns True if the solution respects the constraints.
         To call this function, all the operations must be planned.
         '''
-        raise "Not implemented error"
+        # 1. Toutes les opérations doivent être planifiées
+        for op in self.all_operations:
+            if not op.assigned:
+                return False
+
+        # 2. Vérification des durées limites par machine (EndTime)
+        for machine in self.inst.machines:
+            if machine.scheduled_operations:
+                last_end = max(op.end_time for op in machine.scheduled_operations)
+                if last_end > machine.end_time:
+                    return False
+
+        # 3. Ordre séquentiel et non-chevauchement
+        for job in self.inst.jobs:
+            prev_end = 0
+            for op in job.operations:
+                if op.start_time < prev_end:
+                    return False
+                prev_end = op.end_time
+
+        # 4. Pas de chevauchement sur les machines
+        for machine in self.inst.machines:
+            ops = sorted(machine.scheduled_operations, key=lambda x: x.start_time)
+            prev_end = 0
+            for op in ops:
+                if op.start_time < prev_end:
+                    return False
+                prev_end = op.end_time
+
+        return True
 
     @property
     def evaluate(self) -> float:
@@ -54,19 +86,17 @@ class Solution(object):
         if self.is_feasible:
             return self.objective
         else:
-            # Méthode des pénalités pour les solutions non réalisables
-            penalty_weight = 100000
-            violations = self.count_constraint_violations()
-            return self.objective + (penalty_weight * violations)
+            # Pénalité : on compte le nombre d'opérations non assignées
+            unassigned_count = sum(1 for op in self.all_operations if not op.assigned)
+            penalty_weight = 100000 
+            return self.objective + (penalty_weight * max(1, unassigned_count))
 
     @property
     def objective(self) -> float:
         '''
         Returns the value of the objective function
         '''
-        alpha = 1.0  # Poids pour le temps
-        beta = 1.0   # Poids pour l'énergie
-        return (alpha * self.cmax) + (beta * self.total_energy_consumption)
+        return float(self.cmax) + self.total_energy_consumption
 
     @property
     def cmax(self) -> int:
@@ -123,15 +153,31 @@ class Solution(object):
         Returns the available operations for scheduling:
         all constraints have been met for those operations to start
         '''
-        raise "Not implemented error"
+        available = []
+        for job in self.inst.jobs:
+            for i, op in enumerate(job.operations):
+                if not op.assigned:
+                    if i == 0 or job.operations[i-1].assigned:
+                        available.append(op)
+                    # On s'arrête à la première non assignée pour ce job (ordre séquentiel strict)
+                    break 
+        return available
 
     @property
     def all_operations(self) -> List[Operation]:
         '''
         Returns all the operations in the instance
         '''
-        raise "Not implemented error"
+        return self.inst.operations
 
+    def _get_previous_operation_end_time(self, operation: Operation) -> int:
+        """Helper pour trouver l'heure de fin de l'opération précédente du même job"""
+        job = next(j for j in self.inst.jobs if j.job_id == operation.job_id)
+        idx = job.operations.index(operation)
+        if idx > 0 and job.operations[idx-1].assigned:
+            return job.operations[idx-1].end_time
+        return 0
+    
     def schedule(self, operation: Operation, machine: Machine):
         '''
         Schedules the operation at the end of the planning of the machine.
@@ -139,7 +185,29 @@ class Solution(object):
         @param operation: an operation that is available for scheduling
         '''
         assert(operation in self.available_operations)
-        raise "Not implemented error"
+
+        # Quelle est la contrainte de temps côté Job (l'opération précédente doit être finie)
+        earliest_job_start = self._get_previous_operation_end_time(operation)
+
+        is_machine_stopped = len(machine.start_times) == 0
+        
+        if is_machine_stopped:
+            # Si on l'allume, elle a besoin de son temps de setup AVANT de démarrer
+            op_start_time = max(earliest_job_start, machine.set_up_time)
+            
+            # La machine s'allume juste à temps pour être prête
+            machine.start_times.append(op_start_time - machine.set_up_time)
+            machine.stop_times.append(machine.end_time)
+        else:
+            # La machine est déjà allumée, elle peut prendre l'op dès qu'elle est dispo
+            op_start_time = max(earliest_job_start, machine.available_time)
+
+        operation._assigned = True
+        operation._assigned_to = machine.machine_id
+        operation._start_time = op_start_time
+        operation._end_time = op_start_time + operation.processing_time
+
+        machine.scheduled_operations.append(operation)
 
     def gantt(self, colormapname):
         """
