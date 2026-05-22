@@ -56,10 +56,10 @@ class Operation(object):
         '''
         Removes scheduling informations
         '''
-        self.assigned = False
-        self.assigned_to = None
-        self.start_time = None
-        self.end_time = None
+        self._assigned = False
+        self._assigned_to = None
+        self._start_time = None
+        self._end_time = None
 
     def add_predecessor(self, operation):
         '''
@@ -109,7 +109,7 @@ class Operation(object):
         Returns the machine ID it is assigned to if any
         and -1 otherwise
         '''
-        return self._assigned_to or -1
+        return self._assigned_to if self._assigned_to is not None else -1
 
     @property
     def processing_time(self) -> int:
@@ -127,7 +127,7 @@ class Operation(object):
         Returns the start time if is assigned,
         -1 otherwise
         '''
-        return self._start_time or -1
+        return self._start_time if self._start_time is not None else -1
 
     @property
     def end_time(self) -> int:
@@ -135,7 +135,7 @@ class Operation(object):
         Returns the end time if is assigned,
         -1 otherwise
         '''
-        return self._end_time or -1
+        return self._end_time if self._end_time is not None else -1
 
     @property
     def energy(self) -> int:

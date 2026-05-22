@@ -110,7 +110,7 @@ class Instance(object):
 
     @property
     def nb_machines(self):
-        return self._nb_machines
+        return len(self._machines)
 
     @property
     def nb_operations(self):
