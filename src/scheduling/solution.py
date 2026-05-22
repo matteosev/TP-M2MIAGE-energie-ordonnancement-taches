@@ -51,28 +51,38 @@ class Solution(object):
         '''
         Computes the value of the solution
         '''
-        raise "Not implemented error"
+        if self.is_feasible:
+            return self.objective
+        else:
+            # Méthode des pénalités pour les solutions non réalisables
+            penalty_weight = 100000
+            violations = self.count_constraint_violations()
+            return self.objective + (penalty_weight * violations)
 
     @property
     def objective(self) -> float:
         '''
         Returns the value of the objective function
         '''
-        raise "Not implemented error"
+        alpha = 1.0  # Poids pour le temps
+        beta = 1.0   # Poids pour l'énergie
+        return (alpha * self.cmax) + (beta * self.total_energy_consumption)
 
     @property
     def cmax(self) -> int:
         '''
         Returns the maximum completion time of a job
         '''
-        raise "Not implemented error"
+        if not self.inst.jobs:
+            return 0
+        return max(job.completion_time for job in self.inst.jobs)
 
     @property
     def sum_ci(self) -> int:
         '''
         Returns the sum of completion times of all the jobs
         '''
-        raise "Not implemented error"
+        return sum(job.completion_time for job in self.inst.jobs)
 
     @property
     def total_energy_consumption(self) -> float:
@@ -80,7 +90,7 @@ class Solution(object):
         Returns the total energy consumption for processing
         all the jobs (including energy for machine switched on but doing nothing).
         '''
-        raise "Not implemented error"
+        return sum(machine.total_energy_consumption for machine in self.inst.machines)
 
     def __str__(self) -> str:
         '''
