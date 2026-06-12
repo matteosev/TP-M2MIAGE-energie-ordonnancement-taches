@@ -5,6 +5,7 @@ Test of the Solution class.
 '''
 import unittest
 import os
+from unittest.mock import patch, PropertyMock
 
 from src.scheduling.instance.instance import Instance
 from src.scheduling.solution import Solution
@@ -78,31 +79,35 @@ class TestSolution(unittest.TestCase):
         plt = sol.gantt('tab20')
         plt.savefig(TEST_FOLDER + os.path.sep +  'temp.png')
 
-        def test_objective(self):
-            '''
-            Test your objective function
-            '''
-            sol = Solution(self.inst1)
-            type(sol).cmax = property(lambda self: 100) 
-            type(sol).total_energy_consumption = property(lambda self: 50.0)
-            
-            # Si objective = (1.0 * cmax) + (1.0 * total_energy_consumption)
-            self.assertEqual(sol.objective, 150.0, 'La fonction objectif doit agréger correctement Cmax et énergie')
-
-        def test_evaluate(self):
-            '''
-            Test your evaluate function
-            '''
-            sol = Solution(self.inst1)
+    @patch.object(Solution, 'cmax', new_callable=PropertyMock)
+    @patch.object(Solution, 'total_energy_consumption', new_callable=PropertyMock)
+    def test_objective(self, mock_energy, mock_cmax):
+        '''
+        Test your objective function
+        '''
+        sol = Solution(self.inst1)
+        mock_cmax.return_value = 100
+        mock_energy.return_value = 50.0
         
-            # Test quand réalisable
-            type(sol).is_feasible = property(lambda self: True)
-            type(sol).objective = property(lambda self: 100.0)
-            self.assertEqual(sol.evaluate, 100.0, 'L\'évaluation d\'une solution réalisable doit retourner son objectif')
-            
-            # Test quand NON réalisable (pénalité)
-            type(sol).is_feasible = property(lambda self: False)
-            self.assertTrue(sol.evaluate > 100.0, 'L\'évaluation d\'une solution non réalisable doit être pénalisée (score > objectif)')
+        # Si objective = (1.0 * cmax) + (1.0 * total_energy_consumption)
+        self.assertEqual(sol.objective, 150.0, 'La fonction objectif doit agréger correctement Cmax et énergie')
+
+    @patch.object(Solution, 'is_feasible', new_callable=PropertyMock)
+    @patch.object(Solution, 'objective', new_callable=PropertyMock)
+    def test_evaluate(self, mock_objective, mock_feasible):
+        '''
+        Test your evaluate function
+        '''
+        sol = Solution(self.inst1)
+    
+        # Test quand réalisable
+        mock_feasible.return_value = True
+        mock_objective.return_value = 100.0
+        self.assertEqual(sol.evaluate, 100.0, 'L\'évaluation d\'une solution réalisable doit retourner son objectif')
+        
+        # Test quand NON réalisable (pénalité)
+        mock_feasible.return_value = False
+        self.assertTrue(sol.evaluate > 100.0, 'L\'évaluation d\'une solution non réalisable doit être pénalisée (score > objectif)')
 
 
 if __name__ == "__main__":
