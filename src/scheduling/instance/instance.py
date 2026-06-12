@@ -106,7 +106,7 @@ class Instance(object):
 
     @property
     def nb_jobs(self):
-        return self._nb_jobs
+        return len(self._jobs)
 
     @property
     def nb_machines(self):
@@ -114,7 +114,7 @@ class Instance(object):
 
     @property
     def nb_operations(self):
-        return self._nb_operations
+        return len(self._operations)
 
     def __str__(self):
         return f"{self.name}_M{self.nb_machines}_J{self.nb_jobs}_O{self.nb_operations}"
