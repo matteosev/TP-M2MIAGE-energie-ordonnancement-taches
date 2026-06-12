@@ -24,12 +24,14 @@ class TestJob(unittest.TestCase):
 
     def testCompletionTime(self):
         inst = Instance.from_file(TEST_FOLDER_DATA + os.path.sep + "jsp1")
-        sol = Solution(inst)
         
         job = inst.jobs[0]
         op1, op2 = job.operations[0], job.operations[1]
-        op1.end_time = 20
-        op2.end_time = 45
+        op1._assigned = True
+        op1._end_time = 20
+        
+        op2._assigned = True
+        op2._end_time = 45
         
         self.assertEqual(job.completion_time, 45, 'Le completion_time du Job doit être égal à la date de fin de sa dernière opération')
 
